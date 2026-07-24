@@ -1,0 +1,48 @@
+# Cấu hình chuyển đổi video từ 16:9 sang 9:16
+# Video Converter Configuration
+
+# Định dạng đầu ra
+output_format: "mp4"
+
+# Codec video
+# Tùy chọn: libx264 (H.264), libx265 (H.265/HEVC), libvpx (VP8), libvpx-vp9 (VP9)
+codec: "libx264"
+
+# Chất lượng video
+# Tùy chọn: low, medium, high, very_high
+quality: "high"
+
+# Bit rate video (k = kbps)
+# Ví dụ: 2500k, 5000k, 8000k
+bitrate: "5000k"
+
+# Frames per second (fps)
+fps: 30
+
+# Thêm blur nền để làm đầy không gian trống
+# true: sử dụng blur nền, false: sử dụng nền đen
+add_blur: true
+
+# Cường độ blur (1-25, càng cao càng mờ hơn)
+blur_intensity: 15
+
+# Thư mục chứa file output
+output_dir: "output"
+
+# Cấu hình nâng cao
+advanced:
+  # Preset mã hóa H.264 (ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow)
+  preset: "medium"
+  
+  # Hồ sơ H.264 (baseline, main, high)
+  profile: "high"
+  
+  # CRF (Constant Rate Factor) - chất lượng (0-51, thấp hơn = chất lượng tốt hơn)
+  # Chỉ sử dụng nếu không dùng bitrate
+  crf: null
+  
+  # Kích thước buffer tối đa (kbps)
+  maxrate: "10000k"
+  
+  # Kích thước buffer (kbps)
+  bufsize: "20000k"
