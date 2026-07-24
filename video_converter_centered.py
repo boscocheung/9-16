@@ -176,36 +176,36 @@ class VideoConverterCentered:
             # Làm tròn kích thước
             crop_width = (crop_width // 2) * 2
             crop_height = (crop_height // 2) * 2
-            self.target_width = (self.target_width // 2) * 2
-            self.target_height = (self.target_height // 2) * 2
+            target_width = (self.target_width // 2) * 2
+            target_height = (self.target_height // 2) * 2
             
             print(f"🎯 Kích thước crop: {crop_width}x{crop_height}")
             print(f"📍 Offset: ({offset_x}, {offset_y})")
-            print(f"🎬 Kích thước cuối cùng: {self.target_width}x{self.target_height}")
+            print(f"🎬 Kích thước cuối cùng: {target_width}x{target_height}")
             
-            # Xây dựng filter FFmpeg
+            # Xây dựng filter FFmpeg (sử dụng filter_complex cho multiple inputs)
             if add_blur:
-                # Scale gốc để làm blur background
+                # Scale gốc để làm blur background + crop + scale foreground
                 filter_str = (
-                    f"[0:v]scale={self.target_width}:{self.target_height},"
-                    f"boxblur={blur_intensity}:1[bg];"
-                    f"[0:v]crop={crop_width}:{crop_height}:{offset_x}:{offset_y},"
-                    f"scale={self.target_width}:{self.target_height}[fg];"
-                    f"[bg][fg]overlay=0:0"
+                    f"[0:v]scale={target_width}:{target_height},boxblur={blur_intensity}:1[bg];"
+                    f"[0:v]crop={crop_width}:{crop_height}:{offset_x}:{offset_y},scale={target_width}:{target_height}[fg];"
+                    f"[bg][fg]overlay=0:0[out]"
                 )
             else:
-                # Nền đen
+                # Crop + scale + đặt trên nền đen
                 filter_str = (
-                    f"crop={crop_width}:{crop_height}:{offset_x}:{offset_y},"
-                    f"scale={self.target_width}:{self.target_height},"
-                    f"pad={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2:black"
+                    f"[0:v]crop={crop_width}:{crop_height}:{offset_x}:{offset_y},"
+                    f"scale={target_width}:{target_height},"
+                    f"pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2:black[out]"
                 )
             
-            # Lệnh FFmpeg
+            # Lệnh FFmpeg (sử dụng -filter_complex thay vì -vf)
             cmd = [
                 "ffmpeg",
                 "-i", input_path,
-                "-vf", filter_str,
+                "-filter_complex", filter_str,
+                "-map", "[out]",
+                "-map", "0:a",
                 "-c:v", self.config.get("codec", "libx264"),
                 "-b:v", self.config.get("bitrate", "5000k"),
                 "-c:a", "aac",
@@ -222,11 +222,14 @@ class VideoConverterCentered:
                 print(f"✅ Chuyển đổi thành công: {output_path}")
                 return True
             else:
-                print(f"❌ Lỗi FFmpeg: {result.stderr}")
+                print(f"❌ Lỗi FFmpeg:")
+                print(result.stderr)
                 return False
                 
         except Exception as e:
             print(f"❌ Lỗi: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def convert_with_opencv(self, input_path: str, output_path: str,
@@ -262,13 +265,15 @@ class VideoConverterCentered:
             # Làm tròn kích thước
             crop_width = (crop_width // 2) * 2
             crop_height = (crop_height // 2) * 2
+            target_width = (self.target_width // 2) * 2
+            target_height = (self.target_height // 2) * 2
             
             print(f"🎯 Kích thước crop: {crop_width}x{crop_height}")
             print(f"📍 Offset: ({offset_x}, {offset_y})")
-            print(f"🎬 Kích thước cuối cùng: {self.target_width}x{self.target_height}")
+            print(f"🎬 Kích thước cuối cùng: {target_width}x{target_height}")
             
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            out = cv2.VideoWriter(output_path, fourcc, fps, (self.target_width, self.target_height))
+            out = cv2.VideoWriter(output_path, fourcc, fps, (target_width, target_height))
             
             if not out.isOpened():
                 print(f"❌ Không thể tạo file output: {output_path}")
@@ -291,21 +296,19 @@ class VideoConverterCentered:
                 
                 if add_blur:
                     # Tạo blur background
-                    bg_frame = cv2.resize(frame, (self.target_width, self.target_height))
+                    bg_frame = cv2.resize(frame, (target_width, target_height))
                     bg_frame = cv2.GaussianBlur(bg_frame, 
                                                (blur_intensity * 2 + 1, blur_intensity * 2 + 1), 
                                                0)
                     
                     # Resize cropped frame
-                    fg_frame = cv2.resize(cropped_frame, (self.target_width, self.target_height))
+                    fg_frame = cv2.resize(cropped_frame, (target_width, target_height))
                     
-                    # Blend: đặt foreground ở giữa
-                    output_frame = bg_frame.copy()
-                    # Tính vị trí đặt (để cho foreground ở giữa nếu cần)
+                    # Sử dụng foreground frame
                     output_frame = fg_frame
                 else:
                     # Resize và đặt trên nền đen
-                    resized = cv2.resize(cropped_frame, (self.target_width, self.target_height))
+                    resized = cv2.resize(cropped_frame, (target_width, target_height))
                     output_frame = resized
                 
                 out.write(output_frame)
@@ -323,6 +326,8 @@ class VideoConverterCentered:
             
         except Exception as e:
             print(f"❌ Lỗi: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def convert(self, input_path: str, output_name: Optional[str] = None,
