@@ -1,0 +1,18 @@
+# Cấu hình cho chất lượng cao (TikTok/Instagram Reels)
+# High Quality Preset for Social Media
+
+output_format: "mp4"
+codec: "libx264"
+quality: "high"
+bitrate: "6000k"
+fps: 30
+add_blur: true
+blur_intensity: 15
+output_dir: "output"
+
+advanced:
+  preset: "medium"
+  profile: "high"
+  crf: null
+  maxrate: "12000k"
+  bufsize: "24000k"
