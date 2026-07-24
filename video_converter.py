@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 import subprocess
 import json
+import platform
 
 try:
     import cv2
@@ -33,6 +34,7 @@ class VideoConverter:
         self.config = self._load_config(config_path)
         self.output_dir = Path(self.config.get("output_dir", "output"))
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.system = platform.system()
     
     def _load_config(self, config_path: str) -> dict:
         """Tải file cấu hình YAML"""
@@ -59,6 +61,23 @@ class VideoConverter:
             "blur_intensity": 15,
             "output_dir": "output"
         }
+    
+    def _check_ffmpeg_available(self) -> bool:
+        """Kiểm tra xem FFmpeg có sẵn không (cross-platform)"""
+        try:
+            if self.system == "Windows":
+                # Windows: sử dụng "where" thay vì "which"
+                result = subprocess.run(["where", "ffmpeg"], 
+                                       capture_output=True, 
+                                       timeout=5)
+            else:
+                # Linux/macOS: sử dụng "which"
+                result = subprocess.run(["which", "ffmpeg"], 
+                                       capture_output=True, 
+                                       timeout=5)
+            return result.returncode == 0
+        except Exception:
+            return False
     
     def get_video_info(self, video_path: str) -> dict:
         """
@@ -317,9 +336,8 @@ class VideoConverter:
         
         output_path = str(self.output_dir / output_name)
         
-        # Kiểm tra FFmpeg
-        ffmpeg_available = subprocess.run(["which", "ffmpeg"], 
-                                         capture_output=True).returncode == 0
+        # Kiểm tra FFmpeg (cross-platform)
+        ffmpeg_available = self._check_ffmpeg_available()
         
         if use_ffmpeg and ffmpeg_available:
             add_blur = self.config.get("add_blur", True)
